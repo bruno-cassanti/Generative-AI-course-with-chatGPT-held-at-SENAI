@@ -1,44 +1,43 @@
-import tkinter as tk
-import random
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
 
-respostas = {
-    "oi": ["Olá!", "Oi! Tudo bem?", "E aí!"],
-    "tudo bem": ["Tudo ótimo!", "Sim, e você?", "Indo bem!"],
-    "python": ["Python é ótimo para IA!", "Você está estudando Python?"],
-    "ia": ["IA é fascinante!", "Inteligência Artificial está em todo lugar!"]
-}
+load_dotenv()
+client = OpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1",
+)
 
-def responder(msg):
-    msg = msg.lower()
-    for chave in respostas:
-        if chave in msg:
-            return random.choice(respostas[chave])
-    return "Não entendi, pode reformular?"
+SYSTEM_PROMPT = 'Você é um assistente de programação educacional.'
 
-def enviar():
-    msg = entrada.get()
+
+historico = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+
+print('Chatbot iniciado! Digite "sair" para encerrar.\n')
+
+while True:
+    entrada = input('Você: ').strip()
+
+    if entrada.lower() == 'sair':
+        print('Encerrando. Até logo!')
+        break
+
+    if not entrada:
+        continue
+
+    historico.append({'role': 'user', 'content': entrada})
+
+    try:
+        resposta = client.chat.completions.create(
+            model='openai/gpt-oss-20b',
+            messages=historico,
+            max_tokens=800
+        )
+        texto = resposta.choices[0].message.content
+
+        historico.append({'role': 'assistant', 'content': texto})
+
+        print(f'\nAssistente: {texto}\n')
     
-    if msg.strip() == "":
-        return
-    
-    chat.insert(tk.END, "Você: " + msg + "\n")
-    
-    resposta = responder(msg)
-    chat.insert(tk.END, "Bot: " + resposta + "\n\n")
-    
-    entrada.delete(0, tk.END)
-
-# Interface
-janela = tk.Tk()
-janela.title("Chatbot IA - Simples")
-
-chat = tk.Text(janela, height=50, width=90)
-chat.pack()
-
-entrada = tk.Entry(janela, width=40)
-entrada.pack(side=tk.LEFT, padx=5, pady=5)
-
-botao = tk.Button(janela, text="Enviar", command=enviar)
-botao.pack(side=tk.LEFT)
-
-janela.mainloop()
+    except Exception as e:
+        print(f'Erro ao contactar a API: {e}')
